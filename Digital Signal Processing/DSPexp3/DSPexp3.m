@@ -1,0 +1,67 @@
+%IIR滤波器设计,双线性变换法
+wp=0.2*pi;
+ws=0.35*pi;
+Rp=1;%通带衰减
+As=15;%阻带衰减
+T=0.001;%不重要
+Fs=1/T;
+OmegaP=2*Fs*tan(wp/2);
+OmegaS=2*Fs*tan(ws/2);%预畸变
+ep=sqrt(10^(Rp/10)-1);%通带波纹幅度参数
+Attn=1/10^(As);%阻带波纹幅度参数
+N=ceil((log10((10^(Rp/10)-1)/(10^(As/10)-1)))/(2*log10(OmegaP/OmegaS)));%向上取整的阶数确定
+OmegaC=OmegaP/((10.^(Rp/10)-1).^(1/(2*N)));
+[cs,ds]=u_buttap(N,OmegaC);
+[b,a]=bilinear(cs,ds,Fs);
+[mag,db,pha,w]=freqz_m(b,a);
+figure(1)
+subplot(3,1,1);
+plot(w/pi,mag);grid;
+xlabel('w(pi)');ylabel('幅度响应');
+subplot(3,1,2);
+plot(w/pi,db);grid;
+xlabel('w(pi)');ylabel('幅度响应(dB)');
+axis([0,1,-40,5]);
+subplot(3,1,3);
+plot(w/pi,pha);grid;
+xlabel('w(pi)');ylabel('相位响应')
+%
+%滤波：此时采样频率Fs=1000Hz,FFT点数512,所以数字滤波器通带为0-175Hz
+    %如果更改正弦抽样频率，则改变Fss
+t=0:1/Fs:1;
+    %Fss=100
+    %t=0:1/Fss:1;
+len=512;
+f=Fs*(0:len/2-1)/len;
+s10=sin(20*pi*t);%10Hz正弦
+s100=sin(200*pi*t);%100Hz
+s175=sin(350*pi*t);%175Hz
+%s=s10+s100;
+s=s10+s100+s175;
+y=fft(s,len);
+Bf=filter(b,a,s);%进行滤波
+By=fft(Bf,len);%对滤波后信号进行fft
+figure(2);
+subplot(2,1,1);plot(t,s,'blue',t,Bf,'red');grid;  
+legend('原始混合信号','巴特沃斯滤波器滤波后');  
+subplot(2,1,2);plot(f,abs(By(1:len/2)));grid;  
+title('巴特沃斯低通滤波后信号频谱');  
+xlabel('Hz');ylabel('幅值');  
+
+function [b,a]=u_buttap(N,OmegaC)
+[z,p,k]=buttap(N);%返回N阶低通模拟巴特沃斯滤波器的零点z，极点p，增益k
+p=p*OmegaC;
+k=k*OmegaC.^N;
+B=real(poly(z));
+b=k*B;
+a=real(poly(p));
+end
+
+function [mag,db,pha,w]=freqz_m(b,a)
+[H,w]=freqz(b,a,1000,'whole');%b，a为H(z)的分子、分母多项式的系数向量，N为频率等分次数
+H=(H(1:501))';
+w=(w(1:501))';
+mag=abs(H);
+db=10*log10((mag+eps)/max(mag));
+pha=angle(H);
+end
