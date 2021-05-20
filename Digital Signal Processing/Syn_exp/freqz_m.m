@@ -1,0 +1,10 @@
+function[db,mag,pha,w]=freqz_m(b,a);
+%w:采样频率
+%b:系统函数H(Z)的分子项(对FIR,b=h)
+%a:系统函数H(Z)的分母项(对FIR,a=1)
+[H,w]=freqz(b,a,1000,'whole');
+H=(H(1:1:501))';
+w=(w(1:1:501))';
+mag=abs(H);
+db=20*log10((mag+eps)/max(mag));
+pha=angle(H);
